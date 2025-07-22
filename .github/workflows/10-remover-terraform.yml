@@ -1,0 +1,159 @@
+# /*-----------------------------------------------------------------------------------8
+# |                                                                                    |
+# |     This workflows removes the SAP Workload Zone and/or SYSTEM with GitHub Actions |
+# |                                                                                    |
+# +-----------------------------------------4-----------------------------------------*/
+
+name:                                        SAP Infrastructure removal
+run-name:                                    SAP Infrastructure removal by @${{ github.actor }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      cleanup_sap:
+        description:                         Remove the SAP system
+        type:                                boolean
+        default:                             true
+      sap_system:
+        description:                         "SAP System configuration name, use the following syntax: ENV-LOCA-VNET-SID"
+        required:                            true
+        default:                             "TEST-WEEU-SAP05-X00"
+        type:                                string
+      cleanup_workload_zone:
+        description:                         Remove the SAP Workload Zone
+        type:                                boolean
+        default:                             false
+      workload_zone:
+        description:                         "Workload zone name ..."
+        required:                            true
+        type:                                environment
+
+permissions:
+  contents:                                  write
+  id-token:                                  write
+  issues:                                    write
+
+env:
+  TF_IN_AUTOMATION:                          true
+  TF_LOG:                                    OFF
+
+jobs:
+  remove_sap_infrastructure:
+    name:                                    Remove SAP Infrastructure
+    environment:                             ${{ inputs.workload_zone }}
+    if:                                      ${{ inputs.cleanup_sap }}
+    runs-on:                                 self-hosted
+    container:
+      image:                                 ghcr.io/nnoaman/sap-automation:sdaf-github-actions
+
+    steps:
+      - name:                                Checkout the code
+        uses:                                actions/checkout@v4
+        with:
+          fetch-depth:                       0
+
+      - name:                                Get app token
+        id:                                  get_workflow_token
+        uses:                                peter-murray/workflow-application-token-action@v3
+        with:
+          application_id:                    "${{ secrets.APPLICATION_ID }}"
+          application_private_key:           "${{ secrets.APPLICATION_PRIVATE_KEY }}"
+
+      - name:                                Azure Login with Managed Identity
+        if:                                  ${{ vars.USE_MSI == 'true' }}
+        uses:                                Azure/login@v2
+        with:
+          auth-type:                         IDENTITY
+          tenant-id:                         ${{ vars.ARM_TENANT_ID }}
+          subscription-id:                   ${{ vars.ARM_SUBSCRIPTION_ID }}
+
+      - name:                                Azure Login with Service Principal
+        if:                                  ${{ vars.USE_MSI != 'true' }}
+        uses:                                Azure/Login@v2
+        with:
+          creds:                             |
+            {
+                                              "clientId": "${{ vars.ARM_CLIENT_ID }}",
+                                              "clientSecret": "${{ secrets.ARM_CLIENT_SECRET }}",
+                                              "subscriptionId": "${{ vars.ARM_SUBSCRIPTION_ID }}",
+                                              "tenantId": "${{ vars.ARM_TENANT_ID }}"
+            }
+
+      - name:                                Configure Git Safe Directory
+        run:                                 |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory "/__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}"
+
+      - name:                                Remove SAP Infrastructure
+        run:                                 |
+          cd ${SAP_AUTOMATION_REPO_PATH}
+          deploy/scripts/pipeline_scripts/v2/10-remover-terraform-system.sh
+        env:
+          APPLICATION_CONFIGURATION_NAME:    ${{ vars.APPLICATION_CONFIGURATION_NAME }}
+          CONTROL_PLANE_NAME:                ${{ vars.CONTROL_PLANE_NAME }}
+          APP_TOKEN:                         ${{ steps.get_workflow_token.outputs.token }}
+          ARM_SUBSCRIPTION_ID:               ${{ vars.ARM_SUBSCRIPTION_ID }}
+          SAP_SYSTEM_TFVARS_FILENAME:        ${{ inputs.sap_system }}.tfvars
+          SAP_SYSTEM_FOLDERNAME:             ${{ inputs.sap_system }}
+          WORKLOAD_ZONE_NAME:                ${{ inputs.workload_zone }}
+          USE_MSI:                           ${{ vars.USE_MSI }}
+          TF_VAR_use_spn:                    ${{ vars.USE_MSI }}
+
+  remove_sap_workload_zone:
+    name:                                    Remove SAP Workload Zone
+    environment:                             ${{ inputs.workload_zone }}
+    if:                                      ${{ inputs.cleanup_workload_zone }}
+    runs-on:                                 self-hosted
+    container:
+      image:                                 ghcr.io/nnoaman/sap-automation:sdaf-github-actions
+
+    steps:
+      - name:                                Checkout the code
+        uses:                                actions/checkout@v4
+        with:
+          fetch-depth:                       0
+
+      - name:                                Get app token
+        id:                                  get_workflow_token
+        uses:                                peter-murray/workflow-application-token-action@v3
+        with:
+          application_id:                    "${{ secrets.APPLICATION_ID }}"
+          application_private_key:           "${{ secrets.APPLICATION_PRIVATE_KEY }}"
+
+      - name:                                Azure Login with Managed Identity
+        if:                                  ${{ vars.USE_MSI == 'true' }}
+        uses:                                Azure/login@v2
+        with:
+          auth-type:                         IDENTITY
+          tenant-id:                         ${{ vars.ARM_TENANT_ID }}
+          subscription-id:                   ${{ vars.ARM_SUBSCRIPTION_ID }}
+
+      - name:                                Azure Login with Service Principal
+        if:                                  ${{ vars.USE_MSI != 'true' }}
+        uses:                                Azure/Login@v2
+        with:
+          creds:                             |
+            {
+                                              "clientId": "${{ vars.ARM_CLIENT_ID }}",
+                                              "clientSecret": "${{ secrets.ARM_CLIENT_SECRET }}",
+                                              "subscriptionId": "${{ vars.ARM_SUBSCRIPTION_ID }}",
+                                              "tenantId": "${{ vars.ARM_TENANT_ID }}"
+            }
+
+      - name:                                Configure Git Safe Directory
+        run:                                 |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory "/__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}"
+
+      - name:                                Remove SAP Workload Zone
+        run:                                 |
+          cd ${SAP_AUTOMATION_REPO_PATH}
+          deploy/scripts/pipeline_scripts/v2/10-remover-terraform-workload-zone.sh
+        env:
+          APPLICATION_CONFIGURATION_NAME:    ${{ vars.APPLICATION_CONFIGURATION_NAME }}
+          CONTROL_PLANE_NAME:                ${{ vars.CONTROL_PLANE_NAME }}
+          WORKLOAD_ZONE_NAME:                ${{ inputs.workload_zone }}
+          APP_TOKEN:                         ${{ steps.get_workflow_token.outputs.token }}
+          ARM_SUBSCRIPTION_ID:               ${{ vars.ARM_SUBSCRIPTION_ID }}
+          USE_MSI:                           ${{ vars.USE_MSI }}
+          TF_VAR_use_spn:                    ${{ vars.USE_MSI }}

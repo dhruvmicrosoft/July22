@@ -1,0 +1,161 @@
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# |       This workflows remove the control plane with GitHub Actions          |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+
+name:                                        Remove Control Plane
+run-name:                                    Remove Control Plane by @${{ github.actor }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      control_plane_name:
+        description:                         'Control Plane Name, use the following syntax: ENV-LOCA-VNET'
+        required:                            true
+        type:                                environment
+      test:
+        description:                         'Only run terraform plan'
+        required:                            false
+        type:                                boolean
+        default:                             false
+
+permissions:
+  contents:                                  write
+  id-token:                                  write
+  issues:                                    write
+
+env:
+  TF_IN_AUTOMATION:                          true
+  TF_LOG:                                    OFF
+  ANSIBLE_CORE_VERSION:                      '2.16'
+  TF_VERSION:                                '1.11.3'
+
+jobs:
+
+  remove-control-plane:
+    name:                                    Remove Control Plane
+    environment:                             ${{ inputs.control_plane_name }}
+    runs-on:                                 self-hosted
+    container:
+      image:                                 ghcr.io/nnoaman/sap-automation:sdaf-github-actions
+
+    steps:
+      - name:                                Checkout the code
+        uses:                                actions/checkout@v4
+        with:
+          fetch-depth:                       0
+          token:                             ${{ secrets.GITHUB_TOKEN }}
+
+      - name:                                Configure Git Safe Directory
+        run:                                 |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory "/__w/${{ github.event.repository.name }}/${{ github.event.repository.name }}"
+
+      - name:                                Get app token
+        id:                                  get_workflow_token
+        uses:                                peter-murray/workflow-application-token-action@v4
+        with:
+          application_id:                    ${{ secrets.APPLICATION_ID }}
+          application_private_key:           ${{ secrets.APPLICATION_PRIVATE_KEY }}
+          #organization:                     ${{ github.repository_owner }}
+
+      - name:                                Azure Login with Managed Identity
+        if:                                  ${{ vars.USE_MSI == 'true' }}
+        uses:                                Azure/login@v2
+        with:
+          auth-type:                         IDENTITY
+          tenant-id:                         ${{ vars.ARM_TENANT_ID }}
+          subscription-id:                   ${{ vars.ARM_SUBSCRIPTION_ID }}
+
+      - name:                                Azure Login with Service Principal
+        if:                                  ${{ vars.USE_MSI != 'true' }}
+        uses:                                Azure/Login@v2
+        with:
+          creds:                             |
+            {
+                                              "clientId": "${{ vars.ARM_CLIENT_ID }}",
+                                              "clientSecret": "${{ secrets.ARM_CLIENT_SECRET }}",
+                                              "subscriptionId": "${{ vars.ARM_SUBSCRIPTION_ID }}",
+                                              "tenantId": "${{ vars.ARM_TENANT_ID }}"
+            }
+
+      - name:                                Remove Control Plane
+        run:                                 |
+          echo "Remove control plane deployment"
+          cd ${SAP_AUTOMATION_REPO_PATH}
+          bash deploy/scripts/pipeline_scripts/v2/12-remove-control-plane.sh
+        env:
+          APPLICATION_CONFIGURATION_NAME:    ${{ vars.APPLICATION_CONFIGURATION_NAME }}
+          APP_REGISTRATION_APP_ID:           ${{ vars.APP_REGISTRATION_APP_ID }}
+          APP_TOKEN:                         ${{ steps.get_workflow_token.outputs.token }}
+          ARM_SUBSCRIPTION_ID:               ${{ vars.ARM_SUBSCRIPTION_ID }}
+          CONTROL_PLANE_NAME:                ${{ inputs.control_plane_name }}
+          DEPLOYER_KEYVAULT:                 ${{ vars.DEPLOYER_KEYVAULT }}
+          DEPLOYER_TFSTATE_KEY:              "${{ inputs.control_plane_name }}-INFRASTRUCTURE.terraform.tfstate"
+          IS_PIPELINE_DEPLOYMENT:            true
+          OBJECT_ID:                         ${{ vars.ARM_OBJECT_ID }}
+          TENANT_ID:                         ${{ vars.ARM_TENANT_ID }}
+          TEST_ONLY:                         ${{ inputs.test }}
+          TF_VAR_use_spn:                    ${{ vars.USE_MSI }}
+          USE_MSI:                           ${{ vars.USE_MSI }}
+
+  remove-control-plane-finalize:
+    name:                                    Finalize Control Plane removal
+    environment:                             ${{ inputs.control_plane_name }}
+    needs:                                   [remove-control-plane]
+
+    runs-on:                                 ubuntu-latest
+    container:
+      image:                                 ghcr.io/nnoaman/sap-automation:sdaf-github-actions
+
+    steps:
+      - name:                                Checkout the code
+        uses:                                actions/checkout@v4
+        with:
+          fetch-depth:                       0
+          token:                             ${{ secrets.GITHUB_TOKEN }}
+
+      - name:                                Configure Git Safe Directory
+        run:                                 |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory "/__w/${{ github.event.repository.name }}"
+
+      - name:                                Get app token
+        id:                                  get_workflow_token
+        uses:                                peter-murray/workflow-application-token-action@v4
+        with:
+          application_id:                    ${{ secrets.APPLICATION_ID }}
+          application_private_key:           ${{ secrets.APPLICATION_PRIVATE_KEY }}
+          #organization:                     ${{ github.repository_owner }}
+
+      - name:                                Azure Login with Service Principal
+        if:                                  ${{ vars.USE_MSI != 'true' }}
+        uses:                                Azure/Login@v2
+        with:
+          client-id:                         ${{ vars.ARM_CLIENT_ID }}
+          tenant-id:                         ${{ vars.ARM_TENANT_ID }}
+          subscription-id:                   ${{ vars.ARM_SUBSCRIPTION_ID }}
+
+      - name:                                Azure Login with initial Service Principal to create the self-hosted runner
+        if:                                  ${{ vars.USE_MSI == 'true' }}
+        uses:                                Azure/Login@v2
+        with:
+          client-id:                         ${{ vars.ARM_SPN_CLIENT_ID }}
+          tenant-id:                         ${{ vars.ARM_TENANT_ID }}
+          subscription-id:                   ${{ vars.ARM_SUBSCRIPTION_ID }}
+
+      - name:                                Prepare Control Plane
+        id:                                  prepare_control_plane
+        run:                                 |
+          echo "Running control plane preparation"
+          cd ${SAP_AUTOMATION_REPO_PATH}
+          bash deploy/scripts/pipeline_scripts/v2/12-remove-control-plane-finalize.sh
+        env:
+          APPLICATION_CONFIGURATION_NAME:    ${{ vars.APPLICATION_CONFIGURATION_NAME }}
+          ARM_SUBSCRIPTION_ID:               ${{ vars.ARM_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID:                     ${{ vars.ARM_TENANT_ID }}
+          ARM_OBJECT_ID:                     ${{ vars.ARM_OBJECT_ID }}
+          CONTROL_PLANE_NAME:                ${{ inputs.control_plane_name }}
+          IS_PIPELINE_DEPLOYMENT:            true
+          TEST_ONLY:                         ${{ inputs.test }}
