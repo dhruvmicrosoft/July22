@@ -1,0 +1,4 @@
+deployer_tfstate_key=CPJ22-EUS2-DEP01-INFRASTRUCTURE.terraform.tfstate
+APPLICATION_CONFIGURATION_ID=/subscriptions/d6c8e3b6-467e-452e-97c9-49d9de9e37da/resourceGroups/CPJ22-EUS2-DEP01-INFRASTRUCTURE/providers/Microsoft.AppConfiguration/configurationStores/cpj22eus2apcefd
+CONTROL_PLANE_NAME=CPJ22-EUS2-DEP01
+landscape_tfstate_key=WZDA1-EUS2-SAP01-INFRASTRUCTURE.terraform.tfstate
