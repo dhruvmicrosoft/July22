@@ -1,0 +1,187 @@
+---
+
+#############################################################################
+#                                                                           #
+#                            Infrastructure                                 #
+#                                                                           #
+#############################################################################
+
+# sap_fqdn defines the fully qualified domain name for the systems
+sap_fqdn:                                sdaf.contoso.net
+
+#############################################################################
+#                                                                           #
+#                           Application tier                                #
+#                                                                           #
+#############################################################################
+
+# bom_base_name is the name of the SAP Application Bill of Materials file
+bom_base_name:                           
+
+# sap_sid is the application SID
+sap_sid:                                 J22
+
+# web_sid is the Web Dispatcher SID (if applicable)
+web_sid:                                 
+
+wd_instance_number:                      "00"
+
+# scs_high_availability is a boolean flag indicating
+# if the SAP Central Services are deployed using high availability
+scs_high_availability:                   false                      # {scs_high_availability}
+scs_cluster_type:                        AFA
+
+# SCS Instance Number
+scs_instance_number:                     "00"
+
+# scs_lb_ip is the Virtual IP address of the load balancer for
+# the SAP Central Services virtual machines
+scs_lb_ip:                               10.110.32.7
+
+# ERS Instance Number
+ers_instance_number:                     "01"
+
+# ecs_lb_ip is the ERS IP address of the load balancer for
+# the SAP Central Services virtual machines
+ers_lb_ip:                               
+
+
+# PAS Instance Number
+pas_instance_number:                     "00"
+
+# APP Instance Number
+app_instance_number:                     "00"
+
+# Set to true to instruct Ansible to configure Pacemaker clusters using an managed identity
+use_msi_for_clusters:                    true
+
+#############################################################################
+#                                                                           #
+#                              Database tier                                #
+#                                                                           #
+#############################################################################
+
+# sap_sid is the database SID
+db_sid:                                  HDB
+db_instance_number:                      "00"
+
+# platform defines the database platform
+# valid values are:
+# ASE
+# DB2
+# HANA
+# ORACLE
+# SQLSERVER
+
+platform:                                 HANA
+
+# Database User (SYSTEM) Password
+# hana_system_user_password:
+
+# OS password for <SID>adm user
+# hana_os_sidadm_password:
+
+# SAP Host Agent User (sapadm) Password
+# hana_os_sapadm_password:
+
+subnet_cidr_anf:                         
+subnet_cidr_app:                         10.110.32.0/19
+subnet_cidr_db:                          10.110.96.0/19
+
+
+# db_high_availability is a boolean flag indicating if the
+# SAP database servers are deployed using high availability
+db_high_availability:                    false
+database_high_availability:              false
+database_cluster_type:                   AFA
+# database_loadbalancer_ip is the IP address of the load balancer for the database virtual machines
+database_loadbalancer_ip:                10.110.96.6
+
+# Backwards compatibility
+db_lb_ip:                                10.110.96.6
+
+
+
+# use_simple_mount defines if simple mount is to be used
+use_simple_mount:                        false
+
+# use_hanasr_angi defines if the SAP HANA SR next generation interface is to be used
+use_hanasr_angi:                         false
+
+# use_fence_kdump defines if optional kdump stonith device needs to be added for RHEL clusters.
+use_fence_kdump:                         false
+
+
+#############################################################################
+#                                                                           #
+#                                 NFS                                       #
+#                                                                           #
+#############################################################################
+
+NFS_provider:                            AFS
+sap_mnt:                       wzda1eus2sap01j22sapmnt9.privatelink.file.core.windows.net:/wzda1eus2sap01j22sapmnt9/sapmnt
+
+
+
+
+
+
+
+#############################################################################
+#                                                                           #
+#                           Miscellaneous                                   #
+#                                                                           #
+#############################################################################
+
+# kv_name is the name of the key vault containing the system credentials
+kv_name:                                 wzda1eus2sap01user
+
+# secret_prefix is the prefix for the name of the secret stored in key vault
+secret_prefix:                           WZDA1-EUS2-SAP01
+
+# Set to true to instruct Ansible to update all the packages on the virtual machines
+upgrade_packages:                        true
+
+# This is the name of the application configuration
+application_configuration_name:          cpj22eus2apcefd
+
+# This is the name of the control plane
+control_plane_name:                      CPJ22-EUS2-DEP01
+
+# This is the path to the container in the storage account where the installation is stored
+media_path:                              https://cpj22eus2saplib7e0.blob.core.windows.net/sapbits
+
+#############################################################################
+#                                                                           #
+#                                Disks                                      #
+#                                                                           #
+#############################################################################
+
+# This dictionary lists the deployed disks and their types
+# Each "type" will create a volume group
+# If there are multiple disks of the same type they will be placed in an LVM
+
+disks:
+  - { host: 'j22dhdb00l092', LUN: 0, type: 'data' }
+  - { host: 'j22dhdb00l092', LUN: 1, type: 'data' }
+  - { host: 'j22dhdb00l092', LUN: 2, type: 'data' }
+  - { host: 'j22dhdb00l092', LUN: 9, type: 'log' }
+  - { host: 'j22dhdb00l092', LUN: 6, type: 'shared' }
+  - { host: 'j22dhdb00l092', LUN: 14, type: 'sap' }
+  - { host: 'j22dhdb00l092', LUN: 15, type: 'backup' }
+  - { host: 'j22app00l925', LUN: 0, type: 'sap' }
+  - { host: 'j22scs00l925', LUN: 0, type: 'sap' }
+
+
+
+#############################################################################
+#                                                                           #
+#                                AMS                                        #
+#                                                                           #
+#############################################################################
+# ams_resource_id is the AMS resource ID
+ams_resource_id:                         
+enable_os_monitoring:                    false
+enable_ha_monitoring:                    false
+
+...

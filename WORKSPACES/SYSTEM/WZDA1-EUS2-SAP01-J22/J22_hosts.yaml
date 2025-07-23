@@ -1,0 +1,83 @@
+J22_DB:
+  hosts:
+    j22dhdb00l092:
+      ansible_host        : 10.110.96.5
+      remote_user         : azureadm
+      ansible_connection  : ssh
+      connection_type     : key
+      virtual_host        : j22dhdb00l092
+      become_user         : root
+      os_type             : linux
+      vm_name             : WZDA1-EUS2-SAP01-J22_j22dhdb_z2_00l0925
+      resource_group_name : WZDA1-EUS2-SAP01-J22
+      subscription_id     : d6c8e3b6-467e-452e-97c9-49d9de9e37da
+
+  vars:
+    node_tier             : hana
+    supported_tiers       : [hana]
+
+J22_SCS:
+  hosts:
+    j22scs00l925:
+      ansible_host        : 10.110.32.10
+      remote_user         : azureadm
+      ansible_connection  : ssh
+      connection_type     : key
+      virtual_host        : j22scs00l925
+      become_user         : root
+      os_type             : linux
+      vm_name             : WZDA1-EUS2-SAP01-J22_j22scs_z2_00l925
+      resource_group_name : WZDA1-EUS2-SAP01-J22
+      subscription_id     : d6c8e3b6-467e-452e-97c9-49d9de9e37da
+
+  vars:
+    node_tier             : scs
+    supported_tiers       : [scs]
+
+J22_ERS:
+  hosts:
+  vars:
+    node_tier             : ers
+    supported_tiers       : [ers]
+
+J22_PAS:
+  hosts:
+    j22app00l925:
+      ansible_host        : 10.110.32.9
+      remote_user         : azureadm
+      ansible_connection  : ssh
+      connection_type     : key
+      virtual_host        : j22app00l925
+      become_user         : root
+      os_type             : linux
+      vm_name             : WZDA1-EUS2-SAP01-J22_j22app_z2_00l925
+      resource_group_name : WZDA1-EUS2-SAP01-J22
+      subscription_id     : d6c8e3b6-467e-452e-97c9-49d9de9e37da
+
+  vars:
+    node_tier             : pas
+    supported_tiers       : [pas]
+
+J22_APP:
+  hosts:
+  vars:
+    node_tier             : app
+    supported_tiers       : [app]
+
+J22_WEB:
+  hosts:
+  vars:
+    node_tier             : web
+    supported_tiers       : [web]
+
+J22_OBSERVER_DB:
+  hosts:
+  vars:
+    node_tier             : observer
+    supported_tiers       : [observer]
+
+J22_ISCSI:
+  hosts:
+  vars:
+    node_tier             : iscsi
+    supported_tiers       : [iscsi]
